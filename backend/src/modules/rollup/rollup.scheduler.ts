@@ -5,7 +5,9 @@ import { RollupRepository } from './rollup.repository';
 
 const ROLLUP_QUEUE_NAME = 'rollup';
 const ROLLUP_JOB_NAME = 'rollup-tick';
-const ROLLUP_REPEAT_JOB_ID = 'rollup-repeat';
+// Stable scheduler ID — upsertJobScheduler matches on this key, so changing
+// ROLLUP_INTERVAL_MS updates the existing schedule rather than stacking a new one.
+const ROLLUP_SCHEDULER_ID = 'rollup-repeat';
 
 @Injectable()
 export class RollupScheduler implements OnModuleInit, OnModuleDestroy {
@@ -22,22 +24,20 @@ export class RollupScheduler implements OnModuleInit, OnModuleDestroy {
     const redisConnection = { url: this.config.get('REDIS_URL'), maxRetriesPerRequest: null };
 
     this.queue = new Queue(ROLLUP_QUEUE_NAME, { connection: redisConnection });
-    await this.queue.add(
-      ROLLUP_JOB_NAME,
-      {},
-      {
-        repeat: { every: this.config.get('ROLLUP_INTERVAL_MS') },
-        jobId: ROLLUP_REPEAT_JOB_ID,
-        removeOnComplete: true,
-        removeOnFail: true,
-      },
+    await this.queue.upsertJobScheduler(
+      ROLLUP_SCHEDULER_ID,
+      { every: this.config.get('ROLLUP_INTERVAL_MS') },
+      { name: ROLLUP_JOB_NAME, opts: { removeOnComplete: true, removeOnFail: true } },
     );
 
     this.worker = new Worker(ROLLUP_QUEUE_NAME, () => this.drain(), {
-      connection: { url: this.config.get('REDIS_URL'), maxRetriesPerRequest: null },
+      connection: redisConnection,
       concurrency: 1,
     });
     this.worker.on('error', (error) => this.logger.error('rollup worker error', error.stack));
+    this.worker.on('failed', (_job, error) =>
+      this.logger.error(`rollup tick failed: ${error.message}`, error.stack),
+    );
   }
 
   // Keep rolling bounded batches until a pass finds nothing new.
