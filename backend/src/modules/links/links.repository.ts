@@ -45,6 +45,14 @@ export class LinksRepository {
     });
   }
 
+  // Public, NOT owner-scoped: the redirect resolves any code regardless of caller.
+  async findByCodePublic(code: string): Promise<{ longUrl: string; active: boolean } | null> {
+    return this.prisma.link.findUnique({
+      where: { code },
+      select: { longUrl: true, active: true },
+    });
+  }
+
   async deactivateOwned(ownerId: bigint, code: string): Promise<LinkRow | null> {
     const result = await this.prisma.link.updateMany({
       where: { code, ownerId },

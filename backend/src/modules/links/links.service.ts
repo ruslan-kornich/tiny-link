@@ -8,6 +8,7 @@ import { generateShortCode } from './short-code';
 
 export type LinkPage = { items: LinkResponse[]; nextCursor: string | null };
 export type DeactivateResult = { code: string; active: false };
+export type LinkResolution = { longUrl: string; active: boolean };
 
 @Injectable()
 export class LinksService {
@@ -56,6 +57,11 @@ export class LinksService {
       items: pageRows.map((linkRow) => toLinkResponse(linkRow, this.config)),
       nextCursor,
     };
+  }
+
+  // Used by RedirectService (service -> service). Returns null for an unknown code.
+  async resolveForRedirect(code: string): Promise<LinkResolution | null> {
+    return this.repository.findByCodePublic(code);
   }
 
   async deactivate(ownerId: bigint, code: string): Promise<DeactivateResult> {
