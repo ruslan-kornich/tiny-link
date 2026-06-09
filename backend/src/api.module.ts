@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from './config/config.module';
 import { HealthModule } from './health/health.module';
+import { AuthModule } from './modules/auth/auth.module';
 import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
-  imports: [ConfigModule, PrismaModule, HealthModule],
+  imports: [ConfigModule, PrismaModule, HealthModule, AuthModule],
 })
 export class ApiModule {}
