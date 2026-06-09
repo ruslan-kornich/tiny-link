@@ -1,5 +1,6 @@
 import { GenericContainer, StartedTestContainer, Wait } from 'testcontainers';
 import { execSync } from 'node:child_process';
+import { join } from 'node:path';
 
 export type StartedInfra = {
   postgres: StartedTestContainer;
@@ -30,7 +31,10 @@ export async function startInfra(): Promise<StartedInfra> {
   )}/tinylink?schema=public`;
   const redisUrl = `redis://${redis.getHost()}:${redis.getMappedPort(6379)}`;
 
+  // Run from backend/ so Prisma finds prisma/schema.prisma regardless of the
+  // caller's working directory (this helper is reused across test suites).
   execSync('npx prisma migrate deploy', {
+    cwd: join(__dirname, '..', '..'),
     env: { ...process.env, DATABASE_URL: databaseUrl },
     stdio: 'inherit',
   });
@@ -41,8 +45,8 @@ export async function startInfra(): Promise<StartedInfra> {
     databaseUrl,
     redisUrl,
     stop: async () => {
-      await postgres.stop();
-      await redis.stop();
+      // Stop both even if one fails, so a container never leaks.
+      await Promise.all([postgres.stop(), redis.stop()]);
     },
   };
 }
