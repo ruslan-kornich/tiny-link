@@ -5,12 +5,13 @@ import { LinksService, LinkResolution } from '../../src/modules/links/links.serv
 function build(cacheValue: LinkResolution | null, dbValue: LinkResolution | null) {
   const sets: Array<{ code: string; value: LinkResolution }> = [];
   const cache: Partial<RedirectCache> = {
-    get: async () => cacheValue,
-    set: async (code, value) => {
+    get: () => Promise.resolve(cacheValue),
+    set: (code, value) => {
       sets.push({ code, value });
+      return Promise.resolve();
     },
   };
-  const links: Partial<LinksService> = { resolveForRedirect: async () => dbValue };
+  const links: Partial<LinksService> = { resolveForRedirect: () => Promise.resolve(dbValue) };
   const service = new RedirectService(cache as RedirectCache, links as LinksService);
   return { service, sets };
 }
