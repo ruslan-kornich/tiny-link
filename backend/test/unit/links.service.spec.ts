@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { LinksService } from '../../src/modules/links/links.service';
 import { LinksRepository } from '../../src/modules/links/links.repository';
@@ -54,6 +54,22 @@ describe('LinksService', () => {
     const repo: Partial<LinksRepository> = { findOwnedByCode: () => Promise.resolve(null) };
     const service = new LinksService(repo as LinksRepository, config);
     await expect(service.getByCode(7n, 'missing')).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('throws 500 after exhausting all retries on persistent collisions', async () => {
+    let attempts = 0;
+    const repo: Partial<LinksRepository> = {
+      insert: () => {
+        attempts += 1;
+        return Promise.reject(uniqueViolation());
+      },
+      isUniqueViolation: (error) => error instanceof Prisma.PrismaClientKnownRequestError,
+    };
+    const service = new LinksService(repo as LinksRepository, config);
+    await expect(service.create(7n, { url: 'https://example.com' })).rejects.toBeInstanceOf(
+      InternalServerErrorException,
+    );
+    expect(attempts).toBe(3); // CODE_MAX_RETRIES from the mocked config
   });
 
   it('returns nextCursor only when there is an extra page', async () => {
