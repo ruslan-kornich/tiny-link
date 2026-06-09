@@ -25,9 +25,9 @@ describe('RateLimitGuard', () => {
   it('allows requests up to the limit', async () => {
     let count = 0;
     const redis: FakeRedis = {
-      incr: async () => (count += 1),
-      pexpire: async () => 1,
-      pttl: async () => 60000,
+      incr: () => Promise.resolve((count += 1)),
+      pexpire: () => Promise.resolve(1),
+      pttl: () => Promise.resolve(60000),
     };
     const guard = new RateLimitGuard(redis as never, config);
     await expect(guard.canActivate(context('1.1.1.1', () => undefined))).resolves.toBe(true);
@@ -38,9 +38,9 @@ describe('RateLimitGuard', () => {
     let count = 2;
     const headers: Record<string, string> = {};
     const redis: FakeRedis = {
-      incr: async () => (count += 1),
-      pexpire: async () => 1,
-      pttl: async () => 30000,
+      incr: () => Promise.resolve((count += 1)),
+      pexpire: () => Promise.resolve(1),
+      pttl: () => Promise.resolve(30000),
     };
     const guard = new RateLimitGuard(redis as never, config);
     await expect(
@@ -51,11 +51,9 @@ describe('RateLimitGuard', () => {
 
   it('fails open when Redis errors (NFR-2 / AS-3)', async () => {
     const redis: FakeRedis = {
-      incr: async () => {
-        throw new Error('redis down');
-      },
-      pexpire: async () => 1,
-      pttl: async () => -1,
+      incr: () => Promise.reject(new Error('redis down')),
+      pexpire: () => Promise.resolve(1),
+      pttl: () => Promise.resolve(-1),
     };
     const guard = new RateLimitGuard(redis as never, config);
     await expect(guard.canActivate(context('1.1.1.1', () => undefined))).resolves.toBe(true);
