@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           BigInt   @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  links        Link[]
+
+  @@map("users")
+}
+
+model Link {
+  id            BigInt        @id @default(autoincrement())
+  ownerId       BigInt        @map("owner_id")
+  code          String        @unique
+  longUrl       String        @map("long_url")
+  active        Boolean       @default(true)
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  owner         User          @relation(fields: [ownerId], references: [id])
+  clickEvents   ClickEvent[]
+  rollupDailies RollupDaily[]
+
+  @@index([ownerId])
+  @@map("links")
+}
+
+model ClickEvent {
+  id          BigInt   @id @default(autoincrement())
+  linkId      BigInt   @map("link_id")
+  jobId       String   @unique @map("job_id")
+  occurredAt  DateTime @map("occurred_at") @db.Timestamptz(6)
+  day         DateTime @db.Date
+  ip          String   @db.Inet
+  country     String?
+  device      String
+  browser     String
+  refererHost String?  @map("referer_host")
+  link        Link     @relation(fields: [linkId], references: [id])
+
+  @@index([linkId, day])
+  @@map("click_events")
+}
+
+model RollupDaily {
+  linkId         BigInt   @map("link_id")
+  day            DateTime @db.Date
+  dimension      String
+  dimensionValue String   @map("dimension_value")
+  clicks         BigInt   @default(0)
+  uniqueIps      BigInt   @default(0) @map("unique_ips")
+  link           Link     @relation(fields: [linkId], references: [id])
+
+  @@id([linkId, day, dimension, dimensionValue])
+  @@map("rollup_daily")
+}
+
+model RollupCursor {
+  id          Int      @id
+  lastEventId BigInt   @default(0) @map("last_event_id")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("rollup_cursor")
+}
