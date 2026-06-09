@@ -12,6 +12,8 @@ export type LoginResult = { accessToken: string; expiresIn: number };
 
 @Injectable()
 export class AuthService {
+  private dummyPasswordHashPromise: Promise<string> | undefined;
+
   constructor(
     private readonly repository: AuthRepository,
     private readonly jwtService: JwtService,
@@ -34,9 +36,18 @@ export class AuthService {
     }
   }
 
+  // Verifying against a constant dummy hash when the user is missing keeps the
+  // login latency identical for unknown and known emails, preventing
+  // account-enumeration via timing.
+  private getDummyPasswordHash(): Promise<string> {
+    this.dummyPasswordHashPromise ??= argon2.hash('dummy-password-for-timing-safety');
+    return this.dummyPasswordHashPromise;
+  }
+
   async login(dto: LoginDto): Promise<LoginResult> {
     const user = await this.repository.findByEmail(dto.email);
-    const passwordMatches = user ? await argon2.verify(user.passwordHash, dto.password) : false;
+    const passwordHash = user?.passwordHash ?? (await this.getDummyPasswordHash());
+    const passwordMatches = await argon2.verify(passwordHash, dto.password);
     if (!user || !passwordMatches) {
       throw new UnauthorizedException('Invalid credentials');
     }
