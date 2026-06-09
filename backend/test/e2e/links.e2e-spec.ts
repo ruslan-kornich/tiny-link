@@ -77,6 +77,7 @@ describe('Links (e2e)', () => {
       .post('/api/links')
       .set({ Authorization: `Bearer ${ownerToken}` })
       .send({ url: 'https://example.com/secret' });
+    expect(created.status).toBe(201);
     const createdBody = created.body as { code: string };
     const code = createdBody.code;
 
