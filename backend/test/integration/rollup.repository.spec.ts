@@ -104,12 +104,20 @@ describe('RollupRepository', () => {
     await prisma.rollupDaily.deleteMany({ where: { linkId } });
     await repository.resetCursor();
 
-    let result = await repository.runOnce(5000);
+    // 20 pending events drained with batch=7 must take exactly 3 passes (7 + 7 + 6).
+    const BATCH_SIZE = 7;
+    let result = await repository.runOnce(BATCH_SIZE);
     let processedAcrossRuns = result.processed;
+    let passesWithWork = result.processed > 0 ? 1 : 0;
     while (result.processed > 0) {
-      result = await repository.runOnce(5000);
+      result = await repository.runOnce(BATCH_SIZE);
       processedAcrossRuns += result.processed;
+      if (result.processed > 0) {
+        passesWithWork += 1;
+      }
     }
+
+    expect(passesWithWork).toBe(3);
 
     const total = await prisma.rollupDaily.findFirst({
       where: { linkId, dimension: 'total', dimensionValue: '' },
