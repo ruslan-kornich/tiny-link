@@ -62,3 +62,4 @@ Thumbs.db
 
 # Documentation (intentionally not committed)
 docs/
+.worktrees/
