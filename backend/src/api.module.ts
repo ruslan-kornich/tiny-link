@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from './config/config.module';
 import { HealthModule } from './health/health.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ClicksModule } from './modules/clicks/clicks.module';
 import { LinksModule } from './modules/links/links.module';
@@ -17,6 +18,7 @@ import { RedisModule } from './redis/redis.module';
     AuthModule,
     LinksModule,
     ClicksModule,
+    AnalyticsModule,
     RedirectModule, // keep last: its root ":code" route must not shadow /healthz or /api/*
   ],
 })
