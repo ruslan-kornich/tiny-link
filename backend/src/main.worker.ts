@@ -6,8 +6,8 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.createApplicationContext(WorkerModule, {
     logger: new AppLogger('worker'),
   });
+  // ClicksConsumer starts in onModuleInit; SIGTERM → onModuleDestroy flushes the buffer (NFR-5).
   app.enableShutdownHooks();
-  // The worker has no HTTP server; consumer + rollup (plans 05/06) run via lifecycle hooks.
 }
 
 void bootstrap();
