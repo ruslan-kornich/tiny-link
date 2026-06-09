@@ -48,4 +48,11 @@ describe('AuthService', () => {
       UnauthorizedException,
     );
   });
+
+  it('rejects unknown email with UnauthorizedException', async () => {
+    const service = buildService(null);
+    await expect(
+      service.login({ email: 'nobody@example.com', password: 'password1' }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
 });

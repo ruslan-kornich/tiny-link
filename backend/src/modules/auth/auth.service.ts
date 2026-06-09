@@ -1,6 +1,7 @@
 import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
+import { Prisma } from '@prisma/client';
 import { ConfigService } from '../../config/config.service';
 import { AuthRepository } from './auth.repository';
 import { LoginDto } from './dto/login.dto';
@@ -23,7 +24,14 @@ export class AuthService {
       throw new ConflictException('Email already registered');
     }
     const passwordHash = await argon2.hash(dto.password);
-    return this.repository.create(dto.email, passwordHash);
+    try {
+      return await this.repository.create(dto.email, passwordHash);
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException('Email already registered');
+      }
+      throw error;
+    }
   }
 
   async login(dto: LoginDto): Promise<LoginResult> {
