@@ -7,11 +7,11 @@ import { ConfigService } from '../../src/config/config.service';
 function buildService(seedUser: UserRow | null) {
   const store: UserRow[] = seedUser ? [seedUser] : [];
   const repo: Pick<AuthRepository, 'findByEmail' | 'create'> = {
-    findByEmail: async (email) => store.find((user) => user.email === email) ?? null,
-    create: async (email, passwordHash) => {
+    findByEmail: (email) => Promise.resolve(store.find((user) => user.email === email) ?? null),
+    create: (email, passwordHash) => {
       const created = { id: 1n, email, passwordHash };
       store.push(created);
-      return { id: created.id, email: created.email };
+      return Promise.resolve({ id: created.id, email: created.email });
     },
   };
   const jwt = new JwtService({ secret: 'x'.repeat(32) });

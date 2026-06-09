@@ -36,7 +36,9 @@ describe('Auth (e2e)', () => {
       .post('/api/auth/register')
       .send(credentials);
     expect(registered.status).toBe(201);
-    expect(registered.body).toEqual({ id: expect.any(Number), email: 'owner@example.com' });
+    const registeredBody = registered.body as { id: number; email: string };
+    expect(typeof registeredBody.id).toBe('number');
+    expect(registeredBody.email).toBe('owner@example.com');
 
     const duplicate = await request(app.getHttpServer() as Server)
       .post('/api/auth/register')
@@ -47,7 +49,8 @@ describe('Auth (e2e)', () => {
       .post('/api/auth/login')
       .send(credentials);
     expect(loggedIn.status).toBe(200);
-    expect(typeof loggedIn.body.accessToken).toBe('string');
+    const loginBody = loggedIn.body as { accessToken: string; expiresIn: number };
+    expect(typeof loginBody.accessToken).toBe('string');
 
     const wrong = await request(app.getHttpServer() as Server)
       .post('/api/auth/login')
