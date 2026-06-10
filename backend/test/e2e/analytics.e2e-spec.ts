@@ -6,6 +6,7 @@ import { ApiModule } from '../../src/api.module';
 import { AllExceptionsFilter } from '../../src/common/filters/all-exceptions.filter';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import { startInfra, StartedInfra } from '../setup/testcontainers';
+import { StatsResponse } from '../../src/modules/analytics/analytics.shaper';
 
 async function registerAndLogin(app: INestApplication, email: string): Promise<string> {
   const credentials = { email, password: 'password1' };
@@ -48,6 +49,7 @@ describe('Analytics (e2e)', () => {
       .post('/api/links')
       .set(auth)
       .send({ url: 'https://example.com/analytics' });
+    expect(created.status).toBe(201);
     const createdBody = created.body as { code: string };
     const code = createdBody.code;
     const link = await prisma.link.findUniqueOrThrow({ where: { code } });
@@ -68,12 +70,15 @@ describe('Analytics (e2e)', () => {
       .set(auth);
 
     expect(response.status).toBe(200);
-    expect(response.body.totals).toEqual({ clicks: 100, uniqueIps: 80 });
-    expect(response.body.byCountry).toEqual([
+    const statsBody = response.body as StatsResponse;
+    expect(statsBody.totals).toEqual({ clicks: 100, uniqueIps: 80 });
+    expect(statsBody.byCountry).toEqual([
       { value: 'US', clicks: 70 },
       { value: 'DE', clicks: 30 },
     ]);
-    expect(response.body.byReferer).toEqual([{ value: '(direct)', clicks: 40 }]);
+    expect(statsBody.byReferer).toEqual([{ value: '(direct)', clicks: 40 }]);
+    expect(statsBody.byDevice).toEqual([{ value: 'mobile', clicks: 60 }]);
+    expect(statsBody.daily).toEqual([{ day: '2026-06-09', clicks: 100, uniqueIps: 80 }]);
   });
 
   it('returns 404 for a link owned by another user (AS-6)', async () => {
@@ -84,6 +89,7 @@ describe('Analytics (e2e)', () => {
       .post('/api/links')
       .set({ Authorization: `Bearer ${ownerToken}` })
       .send({ url: 'https://example.com/private-stats' });
+    expect(created.status).toBe(201);
     const createdBody = created.body as { code: string };
     const code = createdBody.code;
 
@@ -101,6 +107,7 @@ describe('Analytics (e2e)', () => {
       .post('/api/links')
       .set(auth)
       .send({ url: 'https://example.com/range' });
+    expect(created.status).toBe(201);
     const createdBody = created.body as { code: string };
     const code = createdBody.code;
 

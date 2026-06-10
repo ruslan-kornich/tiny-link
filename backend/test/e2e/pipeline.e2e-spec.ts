@@ -57,11 +57,13 @@ describe('Full pipeline (e2e, AS-1)', () => {
       .post('/api/links')
       .set(authHeader)
       .send({ url: 'https://example.com/pipeline' });
+    expect(createResponse.status).toBe(201);
     const createBody = createResponse.body as { code: string };
     const code = createBody.code;
 
     for (let clickIndex = 0; clickIndex < 100; clickIndex += 1) {
-      await request(api.getHttpServer() as Server).get(`/${code}`).redirects(0);
+      const redirectResponse = await request(api.getHttpServer() as Server).get(`/${code}`).redirects(0);
+      expect(redirectResponse.status).toBe(302);
     }
 
     // Poll analytics until the rollup catches up (eventual consistency, FR-AN3).
