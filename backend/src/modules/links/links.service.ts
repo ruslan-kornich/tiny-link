@@ -64,6 +64,15 @@ export class LinksService {
     return this.repository.findByCodePublic(code);
   }
 
+  // Internal id for cross-module reads (analytics). 404 (not 403) if missing/other owner.
+  async requireOwnedId(ownerId: bigint, code: string): Promise<bigint> {
+    const link = await this.repository.findOwnedByCode(ownerId, code);
+    if (!link) {
+      throw new NotFoundException('Link not found');
+    }
+    return link.id;
+  }
+
   async deactivate(ownerId: bigint, code: string): Promise<DeactivateResult> {
     const updated = await this.repository.deactivateOwned(ownerId, code);
     if (!updated) {
