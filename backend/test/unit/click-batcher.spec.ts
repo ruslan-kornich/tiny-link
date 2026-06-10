@@ -53,6 +53,43 @@ describe('ClickBatcher', () => {
     expect(batches).toHaveLength(1); // timer did not fire a second, empty flush
   });
 
+  it('serializes overlapping flushes so batches reach the handler in order', async () => {
+    let releaseFirstHandler: () => void = () => undefined;
+    const startedBatches: number[][] = [];
+    const batcher = new ClickBatcher<number>(1, 10_000, (batch) => {
+      startedBatches.push(batch);
+      if (startedBatches.length === 1) {
+        return new Promise<void>((resolve) => {
+          releaseFirstHandler = resolve;
+        });
+      }
+      return Promise.resolve();
+    });
+
+    const firstAdd = batcher.add(1); // size-triggered flush, handler blocked
+    const secondAdd = batcher.add(2); // must queue behind the in-flight flush
+    await Promise.resolve();
+    expect(startedBatches).toEqual([[1]]); // second flush has not started yet
+
+    releaseFirstHandler();
+    await firstAdd;
+    await secondAdd;
+    expect(startedBatches).toEqual([[1], [2]]);
+    expect(batcher.size()).toBe(0);
+  });
+
+  it('a queued flush proceeds even when the in-flight flush rejects', async () => {
+    let calls = 0;
+    const batcher = new ClickBatcher<number>(1, 10_000, () => {
+      calls += 1;
+      return calls === 1 ? Promise.reject(new Error('db down')) : Promise.resolve();
+    });
+
+    await expect(batcher.add(1)).rejects.toThrow('db down');
+    await batcher.add(2);
+    expect(calls).toBe(2);
+  });
+
   it('does not propagate a handler rejection from the timer callback', async () => {
     jest.useFakeTimers();
     const batcher = new ClickBatcher<number>(100, 500, () => {

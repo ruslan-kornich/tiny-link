@@ -45,8 +45,9 @@ export async function startInfra(): Promise<StartedInfra> {
     databaseUrl,
     redisUrl,
     stop: async () => {
-      // Stop both even if one fails, so a container never leaks.
-      await Promise.all([postgres.stop(), redis.stop()]);
+      // Stop both even if one fails (e.g. a test already stopped Redis), so a
+      // container never leaks and the failure never masks the other stop.
+      await Promise.allSettled([postgres.stop(), redis.stop()]);
     },
   };
 }

@@ -3,6 +3,7 @@ export type FlushHandler<Item> = (batch: Item[]) => Promise<void>;
 export class ClickBatcher<Item> {
   private buffer: Item[] = [];
   private timer: NodeJS.Timeout | null = null;
+  private inFlightFlush: Promise<void> = Promise.resolve();
 
   constructor(
     private readonly batchSize: number,
@@ -24,17 +25,22 @@ export class ClickBatcher<Item> {
     }
   }
 
-  async flush(): Promise<void> {
+  // The buffer is grabbed synchronously, but handler calls are chained so
+  // batches commit in insertion (id) order; the rollup id-cursor assumes
+  // committed ids are monotone, which overlapping inserts would break.
+  flush(): Promise<void> {
     if (this.timer) {
       clearTimeout(this.timer);
       this.timer = null;
     }
     if (this.buffer.length === 0) {
-      return;
+      return this.inFlightFlush; // let shutdown callers await an in-flight flush
     }
     const batch = this.buffer;
     this.buffer = [];
-    await this.onFlush(batch);
+    const queuedFlush = this.inFlightFlush.then(() => this.onFlush(batch));
+    this.inFlightFlush = queuedFlush.catch(() => undefined);
+    return queuedFlush;
   }
 
   size(): number {
