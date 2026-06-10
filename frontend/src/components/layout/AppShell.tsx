@@ -1,6 +1,7 @@
 import { Link as RouterLink, Outlet } from 'react-router';
-import { Link2, LogOut } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { Button } from '../ui/Button';
+import { BrandLogo } from '../ui/BrandLogo';
 import { useAuth } from '../../features/auth/useAuth';
 
 export function AppShell() {
@@ -8,11 +9,13 @@ export function AppShell() {
 
   return (
     <div className="min-h-screen">
-      <header className="border-b border-slate-200 bg-white">
+      <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-white/75 backdrop-blur-xl">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
-          <RouterLink to="/" className="flex items-center gap-2 text-lg font-semibold text-slate-900">
-            <Link2 className="h-5 w-5 text-indigo-600" />
-            tiny-link
+          <RouterLink
+            to="/"
+            className="rounded-xl transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-400"
+          >
+            <BrandLogo />
           </RouterLink>
           <Button variant="ghost" size="sm" onClick={signOut}>
             <LogOut className="h-4 w-4" />
@@ -20,7 +23,7 @@ export function AppShell() {
           </Button>
         </div>
       </header>
-      <main className="mx-auto max-w-3xl px-4 py-6">
+      <main className="mx-auto max-w-3xl px-4 py-8">
         <Outlet />
       </main>
     </div>

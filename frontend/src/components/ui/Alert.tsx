@@ -7,14 +7,16 @@ interface AlertProps {
 }
 
 const toneClasses = {
-  error: 'bg-red-50 text-red-700 border-red-200',
-  success: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  error: 'bg-red-50 text-red-700 ring-red-200',
+  success: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
 };
 
 export function Alert({ tone, children }: AlertProps) {
   const Icon = tone === 'error' ? CircleAlert : CircleCheck;
   return (
-    <div className={`flex items-start gap-2 rounded-xl border px-3.5 py-2.5 text-sm ${toneClasses[tone]}`}>
+    <div
+      className={`flex animate-pop items-start gap-2.5 rounded-2xl px-4 py-3 text-sm font-medium ring-1 ${toneClasses[tone]}`}
+    >
       <Icon className="mt-0.5 h-4 w-4 shrink-0" />
       <div className="min-w-0 flex-1">{children}</div>
     </div>

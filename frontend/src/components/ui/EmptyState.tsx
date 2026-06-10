@@ -10,11 +10,15 @@ interface EmptyStateProps {
 
 export function EmptyState({ icon: Icon, title, description, action }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-slate-300 px-6 py-12 text-center">
-      {Icon && <Icon className="h-8 w-8 text-slate-400" />}
-      <p className="text-sm font-medium text-slate-700">{title}</p>
-      {description && <p className="text-sm text-slate-500">{description}</p>}
-      {action && <div className="mt-2">{action}</div>}
+    <div className="flex animate-rise flex-col items-center gap-3 rounded-3xl border-2 border-dashed border-brand-200/70 bg-white/60 px-6 py-14 text-center">
+      {Icon && (
+        <div className="rounded-2xl bg-brand-50 p-3.5 text-brand-500 ring-1 ring-brand-100">
+          <Icon className="h-7 w-7" />
+        </div>
+      )}
+      <p className="font-display text-base font-bold text-slate-800">{title}</p>
+      {description && <p className="max-w-sm text-sm text-slate-500">{description}</p>}
+      {action && <div className="mt-1">{action}</div>}
     </div>
   );
 }

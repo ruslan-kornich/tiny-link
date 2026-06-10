@@ -76,7 +76,7 @@ export function RegisterPage() {
         </Button>
         <p className="text-center text-sm text-slate-600">
           Already have an account?{' '}
-          <RouterLink to="/login" className="font-medium text-indigo-600 hover:underline">
+          <RouterLink to="/login" className="font-semibold text-brand-600 hover:underline">
             Sign in
           </RouterLink>
         </p>

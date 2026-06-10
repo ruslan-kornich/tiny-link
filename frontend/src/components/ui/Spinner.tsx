@@ -7,9 +7,9 @@ interface SpinnerProps {
 
 const sizeClasses = {
   sm: 'h-4 w-4',
-  md: 'h-6 w-6',
+  md: 'h-7 w-7',
 };
 
 export function Spinner({ size = 'md', className = '' }: SpinnerProps) {
-  return <Loader2 className={`animate-spin text-slate-400 ${sizeClasses[size]} ${className}`} />;
+  return <Loader2 className={`animate-spin text-brand-500 ${sizeClasses[size]} ${className}`} />;
 }
