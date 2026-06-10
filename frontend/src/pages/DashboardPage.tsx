@@ -12,12 +12,19 @@ export function DashboardPage() {
   const links = linksQuery.data?.pages.flatMap((page) => page.items) ?? [];
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-7">
       <CreateLinkForm />
       <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-semibold text-slate-700">Your links</h2>
+        <div className="flex items-center gap-2.5 px-1">
+          <h2 className="font-display text-lg font-bold tracking-tight text-slate-900">Your links</h2>
+          {linksQuery.isSuccess && links.length > 0 && (
+            <span className="rounded-full bg-brand-100 px-2.5 py-0.5 text-xs font-bold text-brand-700">
+              {links.length}
+            </span>
+          )}
+        </div>
         {linksQuery.isPending && (
-          <div className="flex justify-center py-10">
+          <div className="flex justify-center py-12">
             <Spinner />
           </div>
         )}
@@ -26,14 +33,20 @@ export function DashboardPage() {
           <EmptyState
             icon={Link2}
             title="No links yet"
-            description="Shorten your first URL using the form above."
+            description="Shorten your first URL using the form above — your links and their stats will live here."
           />
         )}
-        {links.map((link) => (
-          <LinkListItem key={link.code} link={link} />
+        {links.map((link, index) => (
+          <div
+            key={link.code}
+            className="animate-rise"
+            style={{ animationDelay: `${Math.min(index, 8) * 50}ms` }}
+          >
+            <LinkListItem link={link} />
+          </div>
         ))}
         {linksQuery.hasNextPage && (
-          <div className="flex justify-center pt-1">
+          <div className="flex justify-center pt-2">
             <Button
               variant="secondary"
               onClick={() => linksQuery.fetchNextPage()}

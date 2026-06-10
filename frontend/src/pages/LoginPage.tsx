@@ -76,7 +76,7 @@ export function LoginPage() {
         </Button>
         <p className="text-center text-sm text-slate-600">
           No account?{' '}
-          <RouterLink to="/register" className="font-medium text-indigo-600 hover:underline">
+          <RouterLink to="/register" className="font-semibold text-brand-600 hover:underline">
             Register
           </RouterLink>
         </p>

@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Link as RouterLink, useParams } from 'react-router';
-import { ArrowLeft, SearchX } from 'lucide-react';
+import { ArrowLeft, CalendarDays, CornerDownRight, Globe, SearchX } from 'lucide-react';
 import { ApiError } from '../api/apiClient';
 import { formatDate, daysAgoRange } from '../lib/formatDate';
+import { getFaviconUrl } from '../lib/favicon';
 import { useLinkQuery } from '../features/links/useLinkQuery';
 import { useLinkStatsQuery } from '../features/analytics/useLinkStatsQuery';
 import { CopyButton } from '../features/links/CopyButton';
@@ -49,40 +50,65 @@ export function LinkDetailPage() {
   }
 
   const link = linkQuery.data;
+  const faviconUrl = getFaviconUrl(link.longUrl);
 
   return (
     <div className="flex flex-col gap-5">
-      <div>
+      <div className="animate-rise">
         <RouterLink
           to="/"
-          className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 transition-colors hover:text-brand-600"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to dashboard
         </RouterLink>
-        <div className="mt-3 flex items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-1.5">
-            <a
-              href={link.shortUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="truncate font-mono text-lg font-semibold text-indigo-600 hover:underline"
-            >
-              {link.shortUrl}
-            </a>
-            <CopyButton value={link.shortUrl} />
-            <Badge tone={link.active ? 'green' : 'gray'}>{link.active ? 'Active' : 'Inactive'}</Badge>
+
+        <div className="mt-3 rounded-3xl border border-slate-200/70 bg-white p-5 shadow-card">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <div className="flex min-w-0 flex-1 basis-56 items-center gap-3">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-50 ring-1 ring-slate-200/70">
+                {faviconUrl ? (
+                  <img src={faviconUrl} alt="" className="h-5.5 w-5.5 rounded" loading="lazy" />
+                ) : (
+                  <Globe className="h-5.5 w-5.5 text-slate-400" />
+                )}
+              </span>
+              <a
+                href={link.shortUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="min-w-0 truncate font-mono text-lg font-semibold text-brand-600 hover:underline"
+              >
+                {link.shortUrl}
+              </a>
+              <span className="flex shrink-0 items-center gap-1.5">
+                <CopyButton value={link.shortUrl} />
+                <Badge tone={link.active ? 'green' : 'gray'}>
+                  {link.active ? 'Active' : 'Inactive'}
+                </Badge>
+              </span>
+            </div>
+            {link.active && (
+              <span className="ml-auto shrink-0">
+                <DeactivateLinkButton code={link.code} shortUrl={link.shortUrl} />
+              </span>
+            )}
           </div>
-          {link.active && <DeactivateLinkButton code={link.code} shortUrl={link.shortUrl} />}
-        </div>
-        <div className="mt-1 flex items-center justify-between gap-3 text-sm text-slate-500">
-          <span className="truncate">{link.longUrl}</span>
-          <span className="shrink-0">Created {formatDate(link.createdAt)}</span>
+          <div className="mt-2.5 flex items-center justify-between gap-3 text-sm text-slate-500 sm:pl-14">
+            <span className="flex min-w-0 items-center gap-1.5">
+              <CornerDownRight className="h-3.5 w-3.5 shrink-0 text-slate-300" />
+              <span className="truncate">{link.longUrl}</span>
+            </span>
+            <span className="flex shrink-0 items-center gap-1.5 text-xs text-slate-400">
+              <CalendarDays className="h-3.5 w-3.5" />
+              Created {formatDate(link.createdAt)}
+            </span>
+          </div>
         </div>
       </div>
 
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-slate-700">Analytics</h2>
+      <div className="flex items-center justify-between px-1">
+        <h2 className="font-display text-lg font-bold tracking-tight text-slate-900">Analytics</h2>
         <RangePresetPicker selectedDays={rangeDays} onSelect={setRangeDays} />
       </div>
 
