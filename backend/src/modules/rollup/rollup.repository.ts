@@ -2,52 +2,79 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
-export type RollupRunResult = { processed: number; advancedTo: bigint };
+export type RollupRunResult = { processed: number };
 
 const ROLLUP_TRANSACTION_TIMEOUT_MS = 30_000;
 const ROLLUP_TRANSACTION_MAX_WAIT_MS = 10_000;
+
+// Postgres 40001 surfaces as P2034 from model queries but as P2010 with
+// meta.code='40001' from $queryRaw/$executeRaw.
+function isSerializationConflict(error: unknown): boolean {
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
+    return false;
+  }
+  if (error.code === 'P2034') {
+    return true;
+  }
+  return error.code === 'P2010' && (error.meta as { code?: string } | undefined)?.code === '40001';
+}
 
 @Injectable()
 export class RollupRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  // One bounded, idempotent rollup pass. Safe to overlap: the FOR UPDATE lock serializes runs.
+  // One bounded, idempotent rollup pass. Safe to overlap: the FOR UPDATE lock
+  // serializes runs; under RepeatableRead the loser of that lock gets a
+  // serialization failure (P2034), which we report as an empty pass.
   async runOnce(batchSize: number): Promise<RollupRunResult> {
-    return this.prisma.$transaction(
-      async (tx) => {
-        const cursorRows = await tx.$queryRaw<{ last_event_id: bigint }[]>(
-          Prisma.sql`SELECT last_event_id FROM rollup_cursor WHERE id = 1 FOR UPDATE`,
-        );
-        const cursorRow = cursorRows[0];
-        if (cursorRow === undefined) {
-          throw new Error('rollup_cursor row id=1 is missing; run migrations');
-        }
-        const lastEventId = cursorRow.last_event_id;
+    try {
+      return await this.prisma.$transaction(
+        async (tx) => {
+          const cursorRows = await tx.$queryRaw<{ last_event_id: bigint }[]>(
+            Prisma.sql`SELECT last_event_id FROM rollup_cursor WHERE id = 1 FOR UPDATE`,
+          );
+          const cursorRow = cursorRows[0];
+          if (cursorRow === undefined) {
+            throw new Error('rollup_cursor row id=1 is missing; run migrations');
+          }
+          const lastEventId = cursorRow.last_event_id;
 
-        const maxRows = await tx.$queryRaw<{ max_id: bigint | null }[]>(Prisma.sql`
-          SELECT max(id) AS max_id
-          FROM (
-            SELECT id FROM click_events WHERE id > ${lastEventId} ORDER BY id LIMIT ${batchSize}
-          ) AS bounded
-        `);
-        const maxId = maxRows[0]?.max_id ?? null;
-        if (maxId === null) {
-          return { processed: 0, advancedTo: lastEventId };
-        }
+          const boundedRows = await tx.$queryRaw<{ max_id: bigint | null; batch_count: bigint }[]>(
+            Prisma.sql`
+              SELECT max(id) AS max_id, count(*) AS batch_count
+              FROM (
+                SELECT id FROM click_events WHERE id > ${lastEventId} ORDER BY id LIMIT ${batchSize}
+              ) AS bounded
+            `,
+          );
+          const maxId = boundedRows[0]?.max_id ?? null;
+          if (maxId === null) {
+            return { processed: 0 };
+          }
 
-        await this.aggregate(tx, lastEventId, maxId);
+          await this.aggregate(tx, lastEventId, maxId);
 
-        await tx.$executeRaw(
-          Prisma.sql`UPDATE rollup_cursor SET last_event_id = ${maxId}, updated_at = now() WHERE id = 1`,
-        );
+          await tx.$executeRaw(
+            Prisma.sql`UPDATE rollup_cursor SET last_event_id = ${maxId}, updated_at = now() WHERE id = 1`,
+          );
 
-        const countRows = await tx.$queryRaw<{ processed: bigint }[]>(Prisma.sql`
-          SELECT count(*) AS processed FROM click_events WHERE id > ${lastEventId} AND id <= ${maxId}
-        `);
-        return { processed: Number(countRows[0]?.processed ?? 0n), advancedTo: maxId };
-      },
-      { timeout: ROLLUP_TRANSACTION_TIMEOUT_MS, maxWait: ROLLUP_TRANSACTION_MAX_WAIT_MS },
-    );
+          return { processed: Number(boundedRows[0]?.batch_count ?? 0n) };
+        },
+        {
+          timeout: ROLLUP_TRANSACTION_TIMEOUT_MS,
+          maxWait: ROLLUP_TRANSACTION_MAX_WAIT_MS,
+          // One snapshot for all six statements: under ReadCommitted a click
+          // batch committing mid-run would be visible to some upserts but not
+          // others, skewing breakdowns the cursor then skips forever.
+          isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
+        },
+      );
+    } catch (error) {
+      if (isSerializationConflict(error)) {
+        return { processed: 0 }; // a concurrent run claimed this batch
+      }
+      throw error;
+    }
   }
 
   // Five dimensions, each an atomic upsert over the same [last, max] window.
