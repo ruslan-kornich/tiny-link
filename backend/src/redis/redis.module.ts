@@ -26,6 +26,8 @@ export class RedisModule implements OnModuleDestroy {
 
   async onModuleDestroy(): Promise<void> {
     const client = this.moduleRef.get<Redis>(REDIS_CLIENT, { strict: false });
-    await client.quit().catch(() => undefined);
+    // If Redis is down, quit() rejects but the client keeps reconnecting
+    // forever; disconnect() stops the retry loop so the process can exit.
+    await client.quit().catch(() => client.disconnect());
   }
 }

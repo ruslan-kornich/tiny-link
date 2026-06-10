@@ -36,9 +36,9 @@ describe('Redirect with Redis down (e2e, AS-3)', () => {
   }, 120_000);
 
   afterAll(async () => {
-    await app.close();
+    await app.close(); // bounded: the clicks queue force-disconnects after its close timeout
     await infra.stop();
-  });
+  }, 30_000);
 
   it('still redirects 302 after Redis is stopped (analytics dropped, redirect survives)', async () => {
     await infra.redis.stop(); // cache miss + enqueue fail + rate-limit fail-open all exercised
